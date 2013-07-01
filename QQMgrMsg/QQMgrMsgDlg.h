@@ -39,4 +39,5 @@ public:
 	//static DWORD WINAPI ThreadPrc(LPVOID pParam);
 	HANDLE ThreadHandle;
 	afx_msg void OnBnClickedButtonRebuild();
+	afx_msg void OnBnClickedButtonSub();
 };

@@ -38,6 +38,41 @@ void GetSubStorage(IStorage *Istg, std::wstring subName, IStorage **out)
 	}
 }
 
+void RemainSubStorage(IStorage *Istg, std::wstring subName)
+{
+	HRESULT    hr;
+	IEnumSTATSTG *ppenum = NULL;
+	STATSTG SStg;
+	ULONG celt = 1;
+
+	hr = Istg->EnumElements(NULL,NULL,NULL,&ppenum);
+	if (hr != S_OK) throw(L"枚举失败");
+
+	//枚举所有子存储
+	while(ppenum->Next(celt,&SStg,&celt)==S_OK)
+	{
+		//如果是子存储 调用递归
+		if(SStg.type == 1)
+		{
+			//  && wcscmp(SStg.pwcsName, subName.c_str())!=0 
+			//if (SStg.pwcsName[0] != L'1')
+			if (wcscmp(SStg.pwcsName, subName.c_str())!=0)
+			{
+				//得到子存储接口
+				hr = Istg->DestroyElement( SStg.pwcsName );
+				Istg->Commit(STGC_DEFAULT);
+				hr = hr;
+				//break;
+			}
+		}
+	}
+
+	if(ppenum)
+	{
+		ppenum->Release();
+	}
+}
+
 void GetSubStreamData(IStorage *Istg, std::wstring subName, std::vector<char>& stream)
 {
 	HRESULT    hr;
@@ -125,6 +160,7 @@ void SetSubStreamData(IStorage *Istg, std::wstring subName, const std::vector<ch
 			hr = pStream->Seek(seekResult, STREAM_SEEK_SET, &setResult);
 			ULONG writeResult = 0xffffffff;
 			hr = pStream->Write(stream.begin(), stream.size(), &writeResult);
+			pStream->Commit(STGC_DEFAULT);
 			pStream->Release();
 			break;
 		}
@@ -157,9 +193,12 @@ void QQMsg::GetMsgContent(unsigned int idx, QQMsg::SignalMsgContent& content)
 void QQMsg::SetMsgContent(unsigned int idx, const QQMsg::SignalMsgContent& content)
 {
 	// replace all
+	// 新头（新ID）、新内容、新时间 ok
 	/*m_content[idx].resize( content.size() );
 	memcpy( m_content[idx].begin(), content.begin(), content.size() );
-	m_index[idx].m_length = content.size();*/
+	m_index[idx].m_length = content.size();
+	save();
+	return;*/
 
 	// replace olny msg, not include TD
 	SignalMsgContent oldContent;
@@ -170,24 +209,51 @@ void QQMsg::SetMsgContent(unsigned int idx, const QQMsg::SignalMsgContent& conte
 	unsigned long newSize = 0;
 	memcpy(&oldSize, oldContent.begin() + 20, 4);
 	memcpy(&newSize, content.begin() + 20, 4);
-	//newContent.insert( newContent.end(), oldContent.begin(), oldContent.begin()+20);
-	newContent.insert( newContent.end(), content.begin(), content.begin()+20);
+
+	//// 老头(老ID)、新内容、新时间 ok,但是现实的时间是新时间
+	//newContent.insert( newContent.end(), oldContent.begin(), oldContent.begin()+20);			// 老头、老ID
+	//memcpy( newContent.begin()+8, oldContent.begin()+8, 4 );
+	//newContent.insert( newContent.end(), content.begin()+20, content.begin()+24+newSize);		// 新内容
+	//newContent.insert( newContent.end(), content.begin()+24+newSize, content.end());			// 新时间
+
+	// 老头(老ID)、新内容、老时间 ok,但是时间不对
+	newContent.insert( newContent.end(), oldContent.begin(), oldContent.begin()+20);			// 老头、老ID
 	memcpy( newContent.begin()+8, oldContent.begin()+8, 4 );
-	newContent.insert( newContent.end(), content.begin()+20, content.begin()+20+4);
+	newContent.insert( newContent.end(), content.begin()+20, content.begin()+24+newSize);		// 新内容
+	newContent.insert( newContent.end(), oldContent.begin()+24+oldSize, oldContent.end());		// 老时间
+
+	//// 新头（新ID）、新内容、老时间 no,新消息丢失
+	//newContent.insert( newContent.end(), content.begin(), content.begin()+20);				// 新头、新ID
+	//memcpy( newContent.begin()+8, content.begin()+8, 4 );
+	//newContent.insert( newContent.end(), content.begin()+20, content.begin()+24+newSize);		// 新内容
+	//newContent.insert( newContent.end(), oldContent.begin()+24+oldSize, oldContent.end());	// 老时间
+
+	//// 老头(老ID)、老内容、新时间 no,老消息丢失
+	//newContent.insert( newContent.end(), oldContent.begin(), oldContent.begin()+20);			// 老头、老ID
+	//memcpy( newContent.begin()+8, oldContent.begin()+8, 4 );
+	//newContent.insert( newContent.end(), oldContent.begin()+20, oldContent.begin()+24+oldSize);	// 老内容
+	//newContent.insert( newContent.end(), content.begin()+24+newSize, content.end());			// 新时间
+
+	//// 新头（新ID）、新内容、老时间 ok
+	//newContent.insert( newContent.end(), content.begin(), content.begin()+20);				// 新头、新ID
+	//memcpy( newContent.begin()+8, content.begin()+8, 4 );
+	//newContent.insert( newContent.end(), content.begin()+20, content.begin()+24+newSize);		// 新内容
+	//newContent.insert( newContent.end(), content.begin()+24+newSize, content.end());			// 新时间
+
 
 	// delete a mst
 	/*char tdzero[5] = {0};
 	tdzero[4] = 1;
 	newContent.insert( newContent.end(), &tdzero[0], &tdzero[4]);*/
 
-	newContent.insert( newContent.end(), content.begin()+24, content.begin()+24+newSize);
-	newContent.insert( newContent.end(), oldContent.begin()+24+oldSize, oldContent.end());
+	// 头
 	unsigned long realNewSize = newContent.size();
 	memcpy(newContent.begin(), &realNewSize, 4);
 
 	m_content[idx].resize( newContent.size() );
 	memcpy( m_content[idx].begin(), newContent.begin(), newContent.size() );
 	m_index[idx].m_length = newContent.size();
+	memcpy( &m_index[idx].m_id, newContent.begin()+8, 4 );
 	save();
 }
 
@@ -465,6 +531,37 @@ void ComFileExtr::OnStart()
 	}
 }
 
+void ComFileExtr::Remain()
+{
+	try
+	{
+		//打开复合文档取得接口
+		HRESULT    hr;
+		hr = ::StgOpenStorage(strDBPath/*T2COLE(L".\\Msg2.0.db")*/,
+			NULL, 
+			STGM_READWRITE|STGM_SHARE_EXCLUSIVE, 
+			NULL, 
+			0, 
+			&m_pRootStg);
+		if (hr != S_OK) 
+		{
+			OutLogMsg(L"打开" + strDBPath + L"时发生异常");
+		}	
+		else
+		{
+			std::wstring buddyName = L"Buddy";
+			IStorage* buddyISg = 0;
+			GetSubStorage(m_pRootStg, buddyName, &buddyISg);
+			std::wstring qqnumIn = L"1365435491";
+			RemainSubStorage(buddyISg, qqnumIn);
+		}
+	}
+	catch(CString strE)
+	{
+		OutLogMsg(strE);
+	}
+}
+
 void ComFileExtr::Rebuild()
 {
 	try
@@ -483,13 +580,14 @@ void ComFileExtr::Rebuild()
 		}	
 		else
 		{
+			// mine
 			std::wstring buddyName = L"buddy";
 			IStorage* buddyISg = 0;
 			GetSubStorage(m_pRootStg, buddyName, &buddyISg);
-			std::wstring qqnumIn = L"20604395";
-			int inIdx = 2;
+			std::wstring qqnumIn = L"20604395"; // 1300739763
 			std::wstring qqnumOut = L"20604395";
-			int outIdx = 3;
+			int inIdx = 0;
+			int outIdx = 72;
 			IStorage* qqISgIn = 0;
 			IStorage* qqISgOut = 0;
 			GetSubStorage(buddyISg, qqnumIn, &qqISgIn);
@@ -505,8 +603,40 @@ void ComFileExtr::Rebuild()
 			QQMsg msgIn(qqISgIn);
 			QQMsg msgOut(qqISgOut);
 			QQMsg::SignalMsgContent contentIn;
+
 			msgIn.GetMsgContent(inIdx, contentIn);
 			msgOut.SetMsgContent(outIdx, contentIn);
+
+
+			// other
+			/*std::wstring buddyName = L"Buddy";
+			IStorage* buddyISg = 0;
+			GetSubStorage(m_pRootStg, buddyName, &buddyISg);
+			std::wstring qqnumIn = L"1365435491";
+			std::wstring qqnumOut = L"1365435491";
+			int inIdx = 308;
+			int outIdx = 309;
+			int inIdx = 0;
+			int outIdx = 309;
+			IStorage* qqISgIn = 0;
+			IStorage* qqISgOut = 0;
+			GetSubStorage(buddyISg, qqnumIn, &qqISgIn);
+			if (qqnumOut == qqnumIn)
+			{
+				qqISgOut = qqISgIn;
+			}
+			else
+			{
+				GetSubStorage(buddyISg, qqnumOut, &qqISgOut);
+			}
+
+			QQMsg msgIn(qqISgIn);
+			QQMsg msgOut(qqISgOut);
+			QQMsg::SignalMsgContent contentIn;
+			inIdx = 308;
+			outIdx = 309;
+			msgIn.GetMsgContent(inIdx, contentIn);
+			msgOut.SetMsgContent(outIdx, contentIn);*/
 		}
 	}
 	catch(CString strE)

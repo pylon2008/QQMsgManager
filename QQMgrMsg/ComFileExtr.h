@@ -57,4 +57,5 @@ void SetInputDBFilePath(CString strPath);
 void SetOutFilePath();
 
 void Rebuild();
+void Remain();
 };

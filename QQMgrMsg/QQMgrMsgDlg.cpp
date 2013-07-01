@@ -68,6 +68,7 @@ BEGIN_MESSAGE_MAP(CQQMgrMsgDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON1, &CQQMgrMsgDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_BUTTON3, &CQQMgrMsgDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON_REBUILD, &CQQMgrMsgDlg::OnBnClickedButtonRebuild)
+	ON_BN_CLICKED(IDC_BUTTON_SUB, &CQQMgrMsgDlg::OnBnClickedButtonSub)
 END_MESSAGE_MAP()
 
 
@@ -213,4 +214,12 @@ void CQQMgrMsgDlg::OnBnClickedButtonRebuild()
 	ComFileExtr comFext(MgrDlg);
 	comFext.SetInputDBFilePath(MgrDlg->strInputFielPath);	
 	comFext.Rebuild();
+}
+
+void CQQMgrMsgDlg::OnBnClickedButtonSub()
+{
+	CQQMgrMsgDlg* MgrDlg = this;
+	ComFileExtr comFext(MgrDlg);
+	comFext.SetInputDBFilePath(MgrDlg->strInputFielPath);	
+	comFext.Remain();
 }
