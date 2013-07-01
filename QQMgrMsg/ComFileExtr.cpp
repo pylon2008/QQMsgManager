@@ -210,6 +210,8 @@ void QQMsg::SetMsgContent(unsigned int idx, const QQMsg::SignalMsgContent& conte
 	memcpy(&oldSize, oldContent.begin() + 20, 4);
 	memcpy(&newSize, content.begin() + 20, 4);
 
+	// 时间、内容、字体、颜色
+	// 昵称
 	//// 老头(老ID)、新内容、新时间 ok,但是现实的时间是新时间
 	//newContent.insert( newContent.end(), oldContent.begin(), oldContent.begin()+20);			// 老头、老ID
 	//memcpy( newContent.begin()+8, oldContent.begin()+8, 4 );
@@ -228,7 +230,7 @@ void QQMsg::SetMsgContent(unsigned int idx, const QQMsg::SignalMsgContent& conte
 	//newContent.insert( newContent.end(), content.begin()+20, content.begin()+24+newSize);		// 新内容
 	//newContent.insert( newContent.end(), oldContent.begin()+24+oldSize, oldContent.end());	// 老时间
 
-	//// 老头(老ID)、老内容、新时间 no,老消息丢失
+	//// 老头(老ID)、老内容、新时间 ok,完全正确显示
 	//newContent.insert( newContent.end(), oldContent.begin(), oldContent.begin()+20);			// 老头、老ID
 	//memcpy( newContent.begin()+8, oldContent.begin()+8, 4 );
 	//newContent.insert( newContent.end(), oldContent.begin()+20, oldContent.begin()+24+oldSize);	// 老内容
@@ -584,10 +586,10 @@ void ComFileExtr::Rebuild()
 			std::wstring buddyName = L"buddy";
 			IStorage* buddyISg = 0;
 			GetSubStorage(m_pRootStg, buddyName, &buddyISg);
-			std::wstring qqnumIn = L"20604395"; // 1300739763
+			std::wstring qqnumIn = L"1300739763"; // 1300739763
 			std::wstring qqnumOut = L"20604395";
 			int inIdx = 0;
-			int outIdx = 72;
+			int outIdx = 1;
 			IStorage* qqISgIn = 0;
 			IStorage* qqISgOut = 0;
 			GetSubStorage(buddyISg, qqnumIn, &qqISgIn);
