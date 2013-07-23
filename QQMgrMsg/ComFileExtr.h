@@ -1,5 +1,41 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct QQMsgIndex 
+{
+	unsigned int m_id;
+	unsigned int m_length;
+};
+
+class QQMsg
+{
+public:
+	typedef std::vector< char > SignalMsgContent;
+
+	QQMsg(IStorage* pRootStg);
+	~QQMsg();
+
+	void GetMsgContent(unsigned int idx, SignalMsgContent& content);
+	void SetMsgContent(unsigned int idx, const SignalMsgContent& content);
+
+protected:
+	void readMsg();
+
+	void save();
+
+private:
+	IStorage* m_pRootStg;
+	std::vector< QQMsgIndex > m_index;
+	std::vector< SignalMsgContent > m_content;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class ComFileExtr
 {
 public:
@@ -19,4 +55,6 @@ int OutLogMsg(CString strMsgLog);
 void OnStart();
 void SetInputDBFilePath(CString strPath);
 void SetOutFilePath();
+
+void Rebuild();
 };
